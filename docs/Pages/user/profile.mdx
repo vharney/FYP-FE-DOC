@@ -1,0 +1,161 @@
+import profile from './profile.png';
+import changePhoto from './change-photo.png';
+
+
+# Profile.js
+
+The user will be redirected to the `Profile.js` screen upon pressing the avatar/profile picture on the Home screen. In this screen, the user can view and **[edit their personal and health-related data](./edit)** and **[profile picture](#edit-profile-picture)**, **[manage their wearables](./manage-wearables)**, **[change password](./change-password)**, and **[sign out](#signout)**. Upon pressing any of the buttons, the user will be redirected to the respective pages.
+
+<img src={profile} width="250" style={{border: '1px solid #ddd', display: 'block', marginLeft: 'auto', marginRight: 'auto'}}/>
+<br/>
+
+
+## DetailsCard
+
+The user's personal and health-related data are placed in two different `<DetailsCard>` container components. The component itself is a reusable component that has been designed and programmed to show a given set of information and may optionally contain a button component. This reusable component was made using the `<Card>` component imported from the `rneui` UI library, read more about it **[here](https://reactnativeelements.com/docs/components/card)**. 
+
+This component accepts 2 mandatory parameters and 1 optional parameter:
+- **title**: The title or name of the data set to be shown on the component
+- **dataToShow**: The data set to be shown in a form of an array. Each data should be stored in an array and have a subtitle as the first element and value as the second element, e.g.,
+```jsx 
+const personalData = [["First Name", "John"], ["Last Name", "Doe"], ["Date of Birth", "1999/03/07"], ["Age", 24]]
+```
+- **button** _(optional)_: The button component to be included in the container component. In this Profile page, a reusable button component is passed (the component will be explained in detail next), e.g., 
+```jsx
+<NavigateButton 
+    name="Edit"
+    nav={"Edit Personal Details"} 
+    navigation={navigation} 
+    data={userData} />
+```
+Example of usage:
+```jsx
+ <DetailsCard 
+    title={"Personal Details"} 
+    button={
+        <NavigateButton 
+            name="Edit" 
+            nav={"Edit Health Details"} 
+            navigation={navigation} 
+            data={userData.health} />
+    }
+    dataToShow={jsonToArray(healthData)}/>
+```
+The personal and health-related data to be shown in the `<DetailsCard>` component is fetched from the DB in a form of JSON and stored in `userData`. Before being passed into the `<DetailsCard>`, the data in the form of JSON have to be turned into an array first by using the helper function `jsonToArray` from `functions.js`.
+
+
+```jsx
+return (
+    <>
+        <Card containerStyle={styles.container} >
+            <View style={styles.cardHeader}>
+                <Text style={styles.title}>{title}</Text>
+                {button}
+            </View>
+            
+            {dataToShow.map((obj, i) => 
+                <View style={styles.optionView} key={i}>
+                    <Text style={styles.optionText}>{obj[0]}</Text>
+                    <Text style={styles.valueText}>{obj[1]}</Text>
+                </View>)
+            }
+        </Card>
+    </>
+);
+```
+
+
+## NavigateButton
+This reusable button component is used to help navigate from current page to another while also passing a set of data. This component was made using the `<Button>` component imported from the `rneui` UI library, read more about it **[here](https://reactnativeelements.com/docs/components/button)**. 
+
+This component accepts 4 mandatory parameters:
+- **navigation**: navigation from React Navigation
+- **nav**: Name of page to be navigated to
+- **name**: Name or title of the button
+- **data**: Data to be passed to the next page
+
+```jsx
+return (
+    <Button
+        onPress={() => navigation.navigate(nav, { data: data })}
+        color="#fff"
+        containerStyle={styles.button}
+        >
+        <Text style={styles.text}>{name}</Text>
+        <Icon name='navigate-next' size={25} color="#0096FF"/>
+    </Button>
+);
+```
+
+Example of usage:
+```jsx
+ <NavigateButton 
+    name="Edit" 
+    nav={"Edit Health Details"} 
+    navigation={navigation} 
+    data={userData.health} />
+```
+
+## Edit Profile Picture
+The user's profile picture is shown on the top of the page and can be editted. Upon pressing the Edit button, an image picker will show up. The user can pick their desired profile picture from their device photo gallery and adjust the position to be shown on the profile. The image picker used in this page is `Expo ImagePicker`, read more about it **[here](https://docs.expo.dev/versions/latest/sdk/imagepicker/)**. 
+
+<img src={changePhoto} width="250" style={{border: '1px solid #ddd', display: 'block', marginLeft: 'auto', marginRight: 'auto'}}/>
+<br/>
+
+```jsx
+const pickImage = async () => {
+    let pickerResult = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+    });
+
+    handleImagePicked(pickerResult);
+};
+```
+
+After the user picked a picture, the picked picture will be uploaded to Firebase, and the URL of the picture will be stored together with the `user` data in the DB.
+
+```jsx
+const handleImagePicked = async (pickerResult) => {
+    try {
+        if (!pickerResult.cancelled) {
+            const resultURL = await uploadImageAsync(pickerResult.uri);
+        }
+    } catch (e) {
+        alert("Upload failed, sorry :(");
+    } 
+};
+
+async function uploadImageAsync(uri) {
+    const data = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+
+    let payload = JSON.stringify({ 'img': data, 'uid': auth.currentUser?.uid })
+
+    try {
+        const response = await axios.post(`${flaskURL}/image`, payload, {
+            headers: {
+            'Content-Type': 'application/json'
+            }
+        });
+        await AsyncStorage.setItem('userData', JSON.stringify(response.data))
+        getUserData(setUserData, userData, true)
+        return 
+    } catch (error) {
+        // catch error
+    } 
+}
+```
+
+## Signout
+When the user pressed the Logout button, the user will immediately be logged out from the current session and redirected to the Login page.
+
+```jsx
+const logout = () => {
+    signOut(auth)
+    .then(() => {
+        AsyncStorage.clear();
+        navigation.navigate("Login");
+        console.log('User signed out!')
+    });
+}
+```
