@@ -1,0 +1,50 @@
+import src1 from './confirm.png';
+import src2 from './web.png';
+
+
+# ConfirmAuth.js
+
+After choosing a wearable from the [previous page](./manage-wearables), the user will be redirected to this page to confirm their willingness to connect their wearable account to this application and share their physical activity data with this application. 
+<img src={src1} width="250" style={{border: '1px solid #ddd', display: 'block', marginLeft: 'auto', marginRight: 'auto'}}/>
+
+Once the user has confirmed, an browser will show in the app to access the authentication page of the respective wearable. This web browser is managed using **`Expo WebBrowser`**, read more about it **[here](https://docs.expo.dev/versions/latest/sdk/webbrowser/)**. The deep-linking from the browser is managed using **`Expo Linking`**, read more about it **[here](https://docs.expo.dev/guides/linking/)**. 
+
+<img src={src2} width="250" style={{border: '1px solid #ddd', display: 'block', marginLeft: 'auto', marginRight: 'auto'}}/>
+
+To retrieve the URL of the authentication page of the respective wearable, an API call to the backend has to be made by calling `getAuthURL`. 
+
+
+```jsx
+const [pressed, setPressed] = useState(false)
+
+useEffect(() => {
+    const linkingEvent = Linking.addEventListener('url', handlePressButtonAsync);
+
+    if (pressed) {
+        Linking.getInitialURL()
+        .then(handlePressButtonAsync())
+    }
+
+    return () => {
+        setPressed(false)
+        linkingEvent.remove();
+    };
+}, [pressed, handlePressButtonAsync]);
+
+const handlePressButtonAsync = async () => {
+    const res = await getAuthURL(auth.currentUser.uid)
+
+    if (res.error) return
+    let response = await WebBrowser.openAuthSessionAsync(res.data, Linking.createURL())
+    
+    if (response && response.type == 'success'){
+        const url = response.url
+        const aCode = url.split('code=')[1].replace('#_=_','')
+        setAuthCode(aCode.split('code=')[0])
+    }
+    
+    WebBrowser.dismissBrowser()
+};
+```
+
+Once the access token has been retrieved from the wearable authentication page, the browser will be closed and the user will be redirected to the **[Success Splash screen](./success-splash)**
